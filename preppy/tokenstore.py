@@ -38,26 +38,26 @@ class TokenStore(object):
         """
         Find length by which to prune corpora such that result is divisible by num_docs and
         such that the result of this division must be divisible by batch_size
-        after first subtracting num_items_in_window.
-        One cannot simply add num_items_in_window*num_docs because this might give result that is
+        after first subtracting num_words_in_window.
+        One cannot simply add num_words_in_window*num_docs because this might give result that is
         larger than number of available corpora.
-        One can't use num_items_in_window to calculate the factor, because num_items_in_window
+        One can't use num_words_in_window to calculate the factor, because num_words_in_window
         should only be added once only to each document
         """
         # factor
-        num_items_in_window = self.context_size + 1
-        factor = self.batch_size * (max_num_docs if self._types is None else 1) + num_items_in_window
+        num_words_in_window = self.context_size + 1
+        factor = self.batch_size * (max_num_docs if self._types is None else 1) + num_words_in_window
         # make divisible
         num_factors = num_raw // factor
         result = num_factors * factor - ((num_factors - (self.num_parts if self._types is None else 1))
-                                         * num_items_in_window)
+                                         * num_words_in_window)
         return result
 
     def prune(self, raw):
         num_raw = len(raw)
-        item_length = self.make_pruning_length(num_raw)
-        pruned = raw[:item_length]
-        print('Pruned {:,} total corpora to {:,}'.format(num_raw, item_length))
+        pruning_length = self.make_pruning_length(num_raw)
+        pruned = raw[:pruning_length]
+        print('Pruned {:,} total corpora to {:,}'.format(num_raw, pruning_length))
         return pruned
 
     # /////////////////////////////////////////////////// properties
@@ -72,16 +72,16 @@ class TokenStore(object):
     @cached_property
     def types(self):
         if self._types is None:
-            most_freq_items = list(islice(self.w2f_no_oov.keys(), 0, self.num_types))
-            sorted_items = sorted(most_freq_items[:-1] + [self.oov])
-            result = SortedSet(sorted_items)
+            most_freq_words = list(islice(self.w2f_no_oov.keys(), 0, self.num_types))
+            sorted_words = sorted(most_freq_words[:-1] + [self.oov])
+            result = SortedSet(sorted_words)
         else:
             result = self._types
         return result
 
     @cached_property
     def w2id(self):
-        result = {item: n for n, item in enumerate(self.types)}
+        result = {word: n for n, word in enumerate(self.types)}
         return result
 
     @cached_property

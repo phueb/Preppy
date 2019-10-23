@@ -11,7 +11,11 @@ setup(
     classifiers=[
         'Intended Audience :: Science/Research'],
     pyython_requires='>=3.6.8',
-    install_requires=['numpy'],
+    install_requires=[
+        'numpy',
+        'attrs',
+        'cached_property',
+    ],
     url='https://github.com/phueb/Preppy',
     license='',
     author='Philip Huebner',

@@ -14,7 +14,8 @@ setup(
     install_requires=[
         'numpy',
         'attrs',
-        'cached_property', 'sortedcontainers'
+        'cached_property',
+        'sortedcontainers'
     ],
     url='https://github.com/phueb/Preppy',
     license='',

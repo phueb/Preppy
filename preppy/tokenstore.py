@@ -36,11 +36,11 @@ class TokenStore(object):
 
     def make_pruning_length(self, num_raw, max_num_docs=2048) -> int:
         """
-        Find length by which to prune corpora such that result is divisible by num_docs and
-        such that the result of this division must be divisible by batch_size
+        Find length by which to prune tokens such that result is divisible by num_docs and
+        such that the result of this division is divisible by batch_size
         after first subtracting num_words_in_window.
         One cannot simply add num_words_in_window*num_docs because this might give result that is
-        larger than number of available corpora.
+        larger than number of available tokens.
         One can't use num_words_in_window to calculate the factor, because num_words_in_window
         should only be added once only to each document
         """
@@ -49,15 +49,16 @@ class TokenStore(object):
         factor = self.batch_size * (max_num_docs if self._types is None else 1) + num_words_in_window
         # make divisible
         num_factors = num_raw // factor
-        result = num_factors * factor - ((num_factors - (self.num_parts if self._types is None else 1))
-                                         * num_words_in_window)
+        num_parts = self.num_parts if self._types is None else 1
+        adj = (num_factors - num_parts) * num_words_in_window
+        result = num_factors * factor - adj
         return result
 
     def prune(self, raw: List[str]) -> List[str]:
         num_raw = len(raw)
         pruning_length = self.make_pruning_length(num_raw)
         pruned = raw[:pruning_length]
-        print('Pruned {:,} total corpora to {:,}'.format(num_raw, pruning_length))
+        print(f'Pruned {num_raw:,} total words to {pruning_length:,}')
         return pruned
 
     # /////////////////////////////////////////////////// properties

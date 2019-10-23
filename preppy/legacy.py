@@ -92,17 +92,29 @@ class TrainPrep:
         assert float(result).is_integer()
         return int(result)
 
+    # /////////////////////////////////////////////////////////////////// mbs
+
     @cached_property
-    def stop_mb(self) -> int:
+    def last_mb(self) -> int:
         return self.num_parts * self.num_mbs_in_block
 
     @cached_property
     def eval_mbs(self) -> List[int]:
-        assert self.stop_mb % self.num_evaluations == 0
-        mbs_in_timepoint = self.stop_mb // self.num_evaluations
+        """
+        self.stop_mb % self.num_evaluations == 0 is not guaranteed to be True, but that is okay
+        """
+        mbs_in_timepoint = self.last_mb // self.num_evaluations
         end = mbs_in_timepoint * self.num_evaluations + mbs_in_timepoint
         eval_mbs = list(range(0, end, mbs_in_timepoint))
         return eval_mbs
+
+    @cached_property
+    def stop_mb(self):
+        """
+        this is where training actually stops.
+        it is not guaranteed to be the last mb, due to equally dividing mbs into eval_mbs
+        """
+        return self.eval_mbs[-1]
 
     # /////////////////////////////////////////////////////////////////// parts & windows
 

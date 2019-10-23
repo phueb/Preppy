@@ -1,4 +1,5 @@
 """
+legacy prep
 includes logic for handling multiple iterations.
 multiple iterations were used in 2019 master's thesis of PH.
 
@@ -7,40 +8,46 @@ multiple iterations were used in 2019 master's thesis of PH.
 from typing import List
 from cached_property import cached_property
 import numpy as np
+from functools import reduce
+from operator import iconcat
+
+from preppy.tokenstore import TokenStore
 
 
 class Prep:
+    """
+    text is split into 2 partitions - more then 2 partitions is not supported.
+    this means that input must already be ordered as desired in the text file.
+
+    a window consists of a multi-word context + a single word (which is predicted)
+
+    """
     def __init__(self,
                  docs: List[str],
-                 num_parts: int,
-                 part_order: str,
+                 reverse: bool,
                  num_types: int,
                  num_iterations: List[int],
                  batch_size: int,
-                 window_size: int,
+                 context_size: int,
                  num_evaluations: int
                  ):
 
-        self.docs = docs
-        self.num_parts = num_parts
-        self.part_order = part_order
+        self.num_parts = 2  # no need to manipulate this
+
+        tokens = reduce(iconcat, docs, [])  # flattens list of lists
+        self.store = TokenStore(tokens, self.num_parts, batch_size, context_size, num_types)
+        self.reverse = reverse
         self.num_types = num_types
         self.num_iterations = num_iterations
         self.batch_size = batch_size
-        self.window_size = window_size
+        self.context_size = context_size
         self.num_evaluations = num_evaluations
 
-        print('Initialized Preppy')
+        print(f'Initialized Prep with {self.store.num_tokens} tokens')
 
     @cached_property
     def num_mbs_in_part(self):
         result = self.num_windows_in_part / self.batch_size
-        assert result.is_integer()
-        return int(result)
-
-    @cached_property
-    def num_mbs_in_test(self):
-        result = self.num_windows_in_test / self.batch_size
         assert result.is_integer()
         return int(result)
 
@@ -66,23 +73,17 @@ class Prep:
         return int(result)
 
     @cached_property
-    def num_items_in_window(self):
-        num_items_in_window = self.window_size + 1
-        return num_items_in_window
+    def num_tokens_in_window(self):
+        return self.context_size + 1
 
     @cached_property
     def num_windows_in_part(self):
-        result = self.num_items_in_part - self.num_items_in_window
+        result = self.num_tokens_in_part - self.num_tokens_in_window
         return result
 
     @cached_property
-    def num_windows_in_test(self):
-        result = self.test_terms.num_tokens - self.num_items_in_window  # TODO test
-        return result
-
-    @cached_property
-    def num_items_in_part(self):
-        result = self.train_terms.num_tokens / self.num_parts
+    def num_tokens_in_part(self):
+        result = self.store.num_tokens / self.num_parts
         assert float(result).is_integer()
         return int(result)
 
@@ -98,31 +99,49 @@ class Prep:
         eval_mbs = list(range(0, end, mbs_in_timepoint))
         return eval_mbs
 
+    # /////////////////////////////////////////////////////////////////// parts & windows
+
+    @cached_property
+    def midpoint(self):
+        return len(self.store.num_tokens)
+
+    @cached_property
+    def part1(self):
+        return self.store.token_ids[:self.midpoint]
+
+    @cached_property
+    def part2(self):
+        return self.store.token_ids[self.midpoint:]
+
+    @cached_property
+    def reordered_parts(self):
+        if self.reverse:
+            return [self.part2, self.part1]
+        else:
+            return [self.part1, self.part2]
+
     def make_windows_mat(self, part, num_windows):
-        result = np.zeros((num_windows, self.num_items_in_window), dtype=np.int)
+        result = np.zeros((num_windows, self.num_tokens_in_window), dtype=np.int)
         for window_id in range(num_windows):
-            window = part[window_id:window_id + self.num_items_in_window]
+            window = part[window_id:window_id + self.num_tokens_in_window]
             result[window_id, :] = window
         return result
 
-    def gen_ids(self, num_iterations_list=None, is_test=False):
-        if not is_test:
-            parts = self.reordered_partitions
-            num_mbs_in_part = self.num_mbs_in_part
-            num_windows = self.num_windows_in_part
-        else:
-            parts = [self.test_terms.token_ids]
-            num_mbs_in_part = self.num_mbs_in_test
-            num_windows = self.num_windows_in_test
-        if not num_iterations_list:
+    def gen_windows(self, iterate_once=False):
+        """
+        this was previously called "gen_ids", and it generated x, y rather than windows
+        """
+        if not iterate_once:
             num_iterations_list = self.num_iterations_list
+        else:
+            num_iterations_list = [1] * self.num_parts
+
         # generate
-        for part_id, part in enumerate(parts):
-            windows_mat = self.make_windows_mat(part, num_windows)
-            windows_mat_x, windows_mat_y = np.split(windows_mat, [self.params.window_size], axis=1)
+        for part_id, part in enumerate(self.reordered_parts):
+            windows_mat = self.make_windows_mat(part, self.num_windows_in_part)
             num_iterations = num_iterations_list[part_id]
             print('Iterating {} times over part {}'.format(num_iterations, part_id))
+
             for _ in range(num_iterations):
-                for x, y in zip(np.vsplit(windows_mat_x, num_mbs_in_part),
-                                np.vsplit(windows_mat_y, num_mbs_in_part)):
-                    yield x, y
+                for windows in np.vsplit(windows_mat, self.num_mbs_in_part):
+                    yield windows

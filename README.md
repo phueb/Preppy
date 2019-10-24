@@ -1,6 +1,7 @@
 # Preppy
 
-A small, and opinionated Python package for preparing language data for RNN language models.
+A small Python package for preparing *ordered* language data for RNN language models.
+
 
 ## To-do
 

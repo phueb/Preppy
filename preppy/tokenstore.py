@@ -2,7 +2,7 @@ from collections import Counter, OrderedDict
 from cached_property import cached_property
 from sortedcontainers import SortedSet
 from itertools import islice
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from preppy import config
 
@@ -19,15 +19,15 @@ class TokenStore(object):
                  batch_size: int,
                  context_size: int,
                  num_types: int,
-                 _types: list = None,  # pass a vocabulary when tokens originate in test split
-                 oov: str = None,
+                 _types: Union[list, None] = None,  # pass a vocabulary when tokens originate in test split
+                 oov: str = config.Symbols.OOV,
                  ):
 
         self.num_parts = num_parts
         self.batch_size = batch_size
         self.context_size = context_size
         self.num_types = num_types
-        self.oov = oov or config.Symbols.OOV
+        self.oov = oov
 
         self._types = _types
 

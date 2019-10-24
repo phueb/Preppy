@@ -1,6 +1,6 @@
 """
-legacy prep
-includes logic for handling multiple iterations.
+the legacy Prep classes are for compatibility with older projects (e.g. StartingSmall).
+they contain logic for handling multiple iterations over ordered language data.
 multiple iterations were used in 2019 master's thesis of PH.
 
 """

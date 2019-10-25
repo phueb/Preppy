@@ -5,7 +5,7 @@ multiple iterations were used in 2019 master's thesis of PH.
 
 """
 
-from typing import List, Generator
+from typing import List, Optional, Generator
 from cached_property import cached_property
 import numpy as np
 from functools import reduce
@@ -137,15 +137,18 @@ class TrainPrep:
     @cached_property
     def reordered_parts(self) -> np.ndarray:
         strided = as_strided(np.array(self.store.token_ids, dtype=np.int16),  # do not change d-type without strides
-                          shape=(self.num_parts, self.num_tokens_in_part),
-                          strides=(2 * self.num_tokens_in_part, 2),
-                          writeable=False)
+                             shape=(self.num_parts, self.num_tokens_in_part),
+                             strides=(2 * self.num_tokens_in_part, 2),
+                             writeable=False)
         if self.reverse:
             return strided[::-1]
         else:
             return strided
 
-    def gen_windows(self, iterate_once=False) -> Generator[np.ndarray, None, None]:
+    def gen_windows(self,
+                    iterate_once: Optional[bool] = False,
+                    reordered_parts: Optional[List[List[int]]] = None
+                    ) -> Generator[np.ndarray, None, None]:
         """
         this was previously called "gen_ids", and it generated x, y rather than windows
         """
@@ -155,8 +158,11 @@ class TrainPrep:
         else:
             num_iterations_list = self.num_iterations_list
 
+        if reordered_parts is None:
+            reordered_parts = self.reordered_parts
+
         # generate
-        for part_id, part in enumerate(self.reordered_parts):
+        for part_id, part in enumerate(reordered_parts):
             windows_mat = make_windows_mat(part, self.num_windows_in_part, self.num_tokens_in_window)
             num_iterations = num_iterations_list[part_id]
             if not iterate_once:
@@ -242,7 +248,7 @@ def make_windows_mat(
         part: List[int],
         num_windows: int,
         num_tokens_in_window: int,
-        ) -> np.ndarray:
+) -> np.ndarray:
     """
     return a matrix, where rows are windows.
     each window is an ordered array of word IDs.

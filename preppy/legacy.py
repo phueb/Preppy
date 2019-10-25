@@ -10,6 +10,7 @@ from cached_property import cached_property
 import numpy as np
 from functools import reduce
 from operator import iconcat
+from numpy.lib.stride_tricks import as_strided
 
 from preppy.tokenstore import TokenStore
 
@@ -26,6 +27,7 @@ class TrainPrep:
                  docs: List[str],
                  reverse: bool,
                  num_types: int,
+                 num_parts: int,
                  num_iterations: List[int],
                  batch_size: int,
                  context_size: int,
@@ -36,15 +38,14 @@ class TrainPrep:
         use TestPrep for docs from test split
         """
 
-        self.num_parts = 2  # this project is for reference/demonstration only so no need to change
-
         # make store
         tokenized_docs = [d.split() for d in docs]
         tokens = reduce(iconcat, tokenized_docs, [])  # flatten list of lists
-        self.store = TokenStore(tokens, self.num_parts, batch_size, context_size, num_types)
+        self.store = TokenStore(tokens, num_parts, batch_size, context_size, num_types)
 
         self.reverse = reverse
         self.num_types = num_types
+        self.num_parts = num_parts
         self.num_iterations = num_iterations
         self.batch_size = batch_size
         self.context_size = context_size
@@ -125,19 +126,24 @@ class TrainPrep:
         return res
 
     @cached_property
-    def part1(self) -> List[int]:
-        return self.store.token_ids[:self.midpoint]
-
-    @cached_property
-    def part2(self) -> List[int]:
-        return self.store.token_ids[self.midpoint:]
-
-    @cached_property
-    def reordered_parts(self) -> List[List[int]]:
+    def reordered_halves(self) -> List[List[int]]:
         if self.reverse:
-            return [self.part2, self.part1]
+            return [self.store.token_ids[self.midpoint:],
+                    self.store.token_ids[:self.midpoint]]
         else:
-            return [self.part1, self.part2]
+            return [self.store.token_ids[:self.midpoint],
+                    self.store.token_ids[self.midpoint:]]
+
+    @cached_property
+    def reordered_parts(self) -> np.ndarray:
+        strided = as_strided(np.array(self.store.token_ids, dtype=np.int16),  # do not change d-type without strides
+                          shape=(self.num_parts, self.num_tokens_in_part),
+                          strides=(2 * self.num_tokens_in_part, 2),
+                          writeable=False)
+        if self.reverse:
+            return strided[::-1]
+        else:
+            return strided
 
     def gen_windows(self, iterate_once=False) -> Generator[np.ndarray, None, None]:
         """

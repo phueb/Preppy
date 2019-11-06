@@ -5,7 +5,7 @@ multiple iterations were used in 2019 master's thesis of PH.
 
 """
 
-from typing import List, Optional, Generator
+from typing import List, Optional, Generator, Union
 from cached_property import cached_property
 import numpy as np
 from functools import reduce
@@ -26,7 +26,7 @@ class TrainPrep:
     def __init__(self,
                  docs: List[str],
                  reverse: bool,
-                 num_types: int,
+                 num_types: Union[int, None],
                  num_parts: int,
                  num_iterations: List[int],
                  batch_size: int,

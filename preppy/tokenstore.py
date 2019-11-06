@@ -2,7 +2,7 @@ from collections import Counter, OrderedDict
 from cached_property import cached_property
 from sortedcontainers import SortedSet
 from itertools import islice
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 
 from preppy import config
 
@@ -18,8 +18,8 @@ class TokenStore(object):
                  num_parts: int,
                  batch_size: int,
                  context_size: int,
-                 num_types: int,
-                 _types: Union[list, None] = None,  # pass a vocabulary when tokens originate in test split
+                 num_types: Union[int, None],
+                 _types: Optional[list] = None,  # pass a vocabulary when tokens originate in test split
                  oov: str = config.Symbols.OOV,
                  ):
 
@@ -78,6 +78,7 @@ class TokenStore(object):
             result = SortedSet(sorted_words)
         else:
             result = self._types
+        print(f'Vocabulary contains {len(result)} types')
         return result
 
     @cached_property

@@ -86,6 +86,21 @@ class TokenStore(object):
         result = {word: n for n, word in enumerate(self.types)}
         return result
 
+    def set_tokens(self, tokens):
+        """
+        used if tokens should be overwritten, e.g. with a reordered list.
+        this method must invalidate any caches that use old tokens
+        """
+        assert len(tokens) == self.num_tokens  # otherwise self.num_tokens would be incorrect
+        assert set(tokens) == self.types  # otherwise self.types would be incorrect
+
+        # overwrite
+        self.__dict__['tokens'] = tokens
+
+        # invalidate cache
+        if 'token_ids' in self.__dict__:
+            del self.__dict__['token_ids']
+
     @cached_property
     def tokens(self) -> List[str]:
         result = []

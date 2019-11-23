@@ -5,9 +5,10 @@ multiple iterations were used in 2019 master's thesis of PH.
 
 """
 
-from typing import List, Optional, Generator, Union
+from typing import List, Optional, Generator, Union, Set
 from cached_property import cached_property
 import numpy as np
+import random
 from functools import reduce
 from operator import iconcat
 from numpy.lib.stride_tricks import as_strided
@@ -32,6 +33,7 @@ class TrainPrep:
                  batch_size: int,
                  context_size: int,
                  num_evaluations: int,
+                 shuffle_within_part: Optional[bool] = False,
                  ):
         """
         A document has type string. It is not tokenized.
@@ -53,6 +55,7 @@ class TrainPrep:
         self.batch_size = batch_size
         self.context_size = context_size
         self.num_evaluations = num_evaluations
+        self.shuffle_within_part = shuffle_within_part
 
     @cached_property
     def num_mbs_in_part(self) -> int:
@@ -129,16 +132,24 @@ class TrainPrep:
         return res
 
     @cached_property
-    def reordered_halves(self) -> List[List[int]]:
-        if self.reverse:
-            return [self.store.token_ids[self.midpoint:],
-                    self.store.token_ids[:self.midpoint]]
-        else:
-            return [self.store.token_ids[:self.midpoint],
-                    self.store.token_ids[self.midpoint:]]
-
-    @cached_property
     def reordered_parts(self) -> np.ndarray:
+
+        # shuffle sentences within each half.
+        # this eliminates any effect of cycling (iterating multiple times on data in the same order)
+        if self.shuffle_within_part:
+            print('Shuffling within part')
+            half1 = self.store.tokens[:self.midpoint]
+            half2 = self.store.tokens[self.midpoint:]
+            # shuffle sentences (not tokens)
+            sentences1 = split_into_sentences(half1, punctuation={'.', '!', '?'})
+            sentences2 = split_into_sentences(half2, punctuation={'.', '!', '?'})
+            random.shuffle(sentences1)
+            random.shuffle(sentences2)
+            # flatten sentences and overwrite existing tokens
+            tokens = reduce(iconcat, sentences1, []) + reduce(iconcat, sentences2, [])
+            self.store.set_tokens(tokens)
+
+        # strided is very memory efficient as it operates on views of original data
         strided = as_strided(np.array(self.store.token_ids, dtype=np.int16),  # do not change d-type without strides
                              shape=(self.num_parts, self.num_tokens_in_part),
                              strides=(2 * self.num_tokens_in_part, 2),
@@ -153,7 +164,7 @@ class TrainPrep:
                     reordered_parts: Optional[List[List[int]]] = None
                     ) -> Generator[np.ndarray, None, None]:
         """
-        this was previously called "gen_ids", and it generated x, y rather than windows
+        generates windows with structure [context, target] where contex is a list of word IDs and target is a word ID.
         """
 
         if iterate_once:  # useful for computing perplexity on train split
@@ -251,7 +262,7 @@ def make_windows_mat(
         part: List[int],
         num_windows: int,
         num_tokens_in_window: int,
-) -> np.ndarray:
+        ) -> np.ndarray:
     """
     return a matrix, where rows are windows.
     each window is an ordered array of word IDs.
@@ -262,3 +273,16 @@ def make_windows_mat(
         window = part[window_id:window_id + num_tokens_in_window]
         result[window_id, :] = window
     return result
+
+
+def split_into_sentences(tokens: List[str],
+                         punctuation: Set[str],
+                         ) -> List[List[str]]:
+    assert isinstance(punctuation, set)
+
+    res = [[]]
+    for w in tokens:
+        res[-1].append(w)
+        if w in punctuation:
+            res.append([])
+    return res

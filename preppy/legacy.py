@@ -34,6 +34,9 @@ class TrainPrep:
                  num_evaluations: int,
                  ):
         """
+        A document has type string. It is not tokenized.
+        Tokenization happens here - using string.split()
+
         only input docs from train split.
         use TestPrep for docs from test split
         """

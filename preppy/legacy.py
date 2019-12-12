@@ -57,43 +57,43 @@ class TrainPrep:
         self.num_evaluations = num_evaluations
         self.shuffle_within_part = shuffle_within_part
 
-    @cached_property
+    @property
     def num_mbs_in_part(self) -> int:
         result = self.num_windows_in_part / self.batch_size
         assert result.is_integer()
         return int(result)
 
-    @cached_property
+    @property
     def num_iterations_list(self) -> List[int]:
         return list(np.linspace(self.num_iterations[0], self.num_iterations[1],
                                 num=self.num_parts, dtype=np.int))
 
-    @cached_property
+    @property
     def mean_num_iterations(self) -> int:
         result = np.mean(self.num_iterations_list)
         assert float(result).is_integer()
         return int(result)
 
-    @cached_property
+    @property
     def num_mbs_in_block(self) -> int:
         """
         a block is a partition that has been repeated num_iterations times
         """
         return self.num_mbs_in_part * self.mean_num_iterations
 
-    @cached_property
+    @property
     def num_mbs_in_token_ids(self) -> int:
         return self.num_mbs_in_part * self.num_parts
 
-    @cached_property
+    @property
     def num_tokens_in_window(self) -> int:
         return self.context_size + 1
 
-    @cached_property
+    @property
     def num_windows_in_part(self) -> int:
         return self.num_tokens_in_part - self.num_tokens_in_window
 
-    @cached_property
+    @property
     def num_tokens_in_part(self) -> int:
         result = self.store.num_tokens / self.num_parts
         assert float(result).is_integer()

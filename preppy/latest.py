@@ -73,8 +73,7 @@ class Prep:
 
     @cached_property
     def num_mbs(self) -> int:
-        result = self.num_windows / self.batch_size
-        assert result.is_integer()
+        result = self.num_windows // self.slide_size  # TODO is this correct?
         return int(result)
 
     # /////////////////////////////////////////////////////////////////// mbs

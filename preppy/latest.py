@@ -58,6 +58,8 @@ class Prep:
         self.context_size = context_size
         self.num_evaluations = num_evaluations
 
+        self.r = -1 if self.reverse else 1  # used to reverse order of batches or windows
+
     @cached_property
     def num_tokens(self) -> int:
         result = self.store.num_tokens
@@ -108,10 +110,7 @@ class Prep:
         not used during training, but is useful for offline analysis of data
         """
 
-        if self.reverse:
-            token_ids_array = np.array(self.store.token_ids[::-1], dtype=np.int16)
-        else:
-            token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
+        token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
 
         if token_ids_array.dtype == np.int16:
             stride = 2  # bytes because 16 bits = 2 bytes
@@ -123,14 +122,11 @@ class Prep:
         all_windows = as_strided(token_ids_array, shape, strides=(stride, stride), writeable=False)
         print(f'Matrix containing all windows has shape={all_windows.shape}')
 
-        return all_windows
+        return all_windows[::self.r]
 
     def gen_windows(self) -> Generator[np.ndarray, None, None]:
 
-        if self.reverse:
-            token_ids_array = np.array(self.store.token_ids[::-1], dtype=np.int16)
-        else:
-            token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
+        token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
 
         if token_ids_array.dtype == np.int16:
             stride = 2  # bytes because 16 bits = 2 bytes
@@ -141,5 +137,5 @@ class Prep:
         for windows in as_strided(token_ids_array,
                                   shape=(self.num_mbs, self.batch_size, self.num_tokens_in_window),
                                   strides=(stride * self.slide_size, stride, stride),
-                                  writeable=False):
+                                  writeable=False)[::self.r]:
             yield windows

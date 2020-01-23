@@ -108,7 +108,10 @@ class Prep:
         not used during training, but is useful for offline analysis of data
         """
 
-        token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
+        if self.reverse:
+            token_ids_array = np.array(self.store.token_ids[::-1], dtype=np.int16)
+        else:
+            token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
 
         if token_ids_array.dtype == np.int16:
             stride = 2  # bytes because 16 bits = 2 bytes
@@ -120,15 +123,12 @@ class Prep:
         all_windows = as_strided(token_ids_array, shape, strides=(stride, stride), writeable=False)
         print(f'Matrix containing all windows has shape={all_windows.shape}')
 
-        if self.reverse:
-            return all_windows[::-1]
-        else:
-            return all_windows
+        return all_windows
 
     def gen_windows(self) -> Generator[np.ndarray, None, None]:
 
         if self.reverse:
-            token_ids_array = np.array(self.store.token_ids, dtype=np.int16)[::-1]
+            token_ids_array = np.array(self.store.token_ids[::-1], dtype=np.int16)
         else:
             token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
 

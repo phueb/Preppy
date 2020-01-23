@@ -38,7 +38,7 @@ class Prep:
                  docs: List[str],
                  reverse: bool,
                  num_types: int,
-                 slide_size: List[int],
+                 slide_size: int,
                  batch_size: int,
                  context_size: int,
                  num_evaluations: int,
@@ -127,7 +127,10 @@ class Prep:
 
     def gen_windows(self) -> Generator[np.ndarray, None, None]:
 
-        token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
+        if self.reverse:
+            token_ids_array = np.array(self.store.token_ids, dtype=np.int16)[::-1]
+        else:
+            token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
 
         if token_ids_array.dtype == np.int16:
             stride = 2  # bytes because 16 bits = 2 bytes

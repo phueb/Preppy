@@ -42,7 +42,7 @@ class Prep:
                  batch_size: int,
                  context_size: int,
                  num_evaluations: int,
-                 vocab: Union[List[str], None] = None,
+                 vocab: Union[List[str], None] = None,  # pass a vocab when initializing with held-out documents
                  ):
 
         # make store
@@ -85,17 +85,16 @@ class Prep:
     # /////////////////////////////////////////////////////////////////// mbs
 
     @cached_property
-    def last_mb(self) -> int:
-        return self.num_mbs
-
+    def num_mbs_per_eval(self):
+        return self.num_mbs // self.num_evaluations
+    
     @cached_property
     def eval_mbs(self) -> List[int]:
         """
-        self.stop_mb % self.num_evaluations == 0 is not guaranteed to be True, but that is okay
+        minibatches at which evaluation should take place
         """
-        mbs_in_timepoint = self.last_mb // self.num_evaluations
-        end = mbs_in_timepoint * self.num_evaluations + mbs_in_timepoint
-        eval_mbs = list(range(0, end, mbs_in_timepoint))
+        end = self.num_mbs_per_eval * self.num_evaluations + self.num_mbs_per_eval
+        eval_mbs = list(range(0, end, self.num_mbs_per_eval))
         return eval_mbs
 
     @cached_property

@@ -58,7 +58,11 @@ class Prep:
         self.context_size = context_size
         self.num_evaluations = num_evaluations
 
-        self.r = -1 if self.reverse else 1  # used to reverse order of batches or windows
+        self.token_ids_array = np.array(self.store.token_ids, dtype=np.int64)
+        if self.token_ids_array.dtype == np.int64:
+            self.stride = 8  # bytes because 64 bits = 2 bytes ; changing this may cause CUDA error
+        else:
+            raise ValueError('Stride must be changed if data-type is changed')
 
     @cached_property
     def num_tokens(self) -> int:
@@ -109,33 +113,23 @@ class Prep:
         """
         not used during training, but is useful for offline analysis of data
         """
-
-        token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
-
-        if token_ids_array.dtype == np.int16:
-            stride = 2  # bytes because 16 bits = 2 bytes
-        else:
-            raise ValueError('Careful: Stride must be changed if data-type is changed')
-
-        num_possible_windows = len(token_ids_array) - self.num_tokens_in_window
+        num_possible_windows = len(self.token_ids_array) - self.num_tokens_in_window
         shape = (num_possible_windows, self.num_tokens_in_window)
-        all_windows = as_strided(token_ids_array, shape, strides=(stride, stride), writeable=False)
+        all_windows = as_strided(self.token_ids_array, shape, strides=(self.stride, self.stride), writeable=False)
         print(f'Matrix containing all windows has shape={all_windows.shape}')
 
-        return all_windows[::self.r]
+        if self.reverse:
+            yield from np.flip(all_windows, axis=0)
+        else:
+            yield from all_windows
 
     def gen_windows(self) -> Generator[np.ndarray, None, None]:
-
-        token_ids_array = np.array(self.store.token_ids, dtype=np.int16)
-
-        if token_ids_array.dtype == np.int16:
-            stride = 2  # bytes because 16 bits = 2 bytes
-        else:
-            raise ValueError('Careful: Stride must be changed if data-type is changed')
-
         # generate batches of windows - implementations is memory efficient because as_strided() returns views
-        for windows in as_strided(token_ids_array,
-                                  shape=(self.num_mbs, self.batch_size, self.num_tokens_in_window),
-                                  strides=(stride * self.slide_size, stride, stride),
-                                  writeable=False)[::self.r]:
-            yield windows
+        windows_stack = as_strided(self.token_ids_array,
+                                   shape=(self.num_mbs, self.batch_size, self.num_tokens_in_window),
+                                   strides=(self.stride * self.slide_size, self.stride, self.stride),
+                                   writeable=False)
+        if self.reverse:
+            yield from np.flip(windows_stack, axis=0)
+        else:
+            yield from windows_stack

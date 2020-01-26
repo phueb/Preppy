@@ -114,13 +114,13 @@ class Prep:
         """
         num_possible_windows = len(self.token_ids_array) - self.num_tokens_in_window
         shape = (num_possible_windows, self.num_tokens_in_window)
-        all_windows = as_strided(self.token_ids_array, shape, strides=(self.stride, self.stride), writeable=False)
-        print(f'Matrix containing all windows has shape={all_windows.shape}')
+        res = as_strided(self.token_ids_array, shape, strides=(self.stride, self.stride), writeable=False)
+        print(f'Matrix containing all windows has shape={res.shape}')
 
         if self.reverse:
-            yield from np.flip(all_windows, axis=0)
+            return np.flip(res, axis=0)
         else:
-            yield from all_windows
+            return res
 
     def gen_windows(self) -> Generator[np.ndarray, None, None]:
         # generate batches of windows - implementations is memory efficient because as_strided() returns views

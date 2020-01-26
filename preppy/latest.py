@@ -91,7 +91,7 @@ class Prep:
     @cached_property
     def eval_mbs(self) -> List[int]:
         """
-        minibatches at which evaluation should take place
+        mini-batches at which evaluation should take place
         """
         end = self.num_mbs_per_eval * self.num_evaluations + self.num_mbs_per_eval
         eval_mbs = list(range(0, end, self.num_mbs_per_eval))

@@ -88,10 +88,6 @@ class TrainPrep:
         return self.num_mbs_in_part * self.mean_num_iterations
 
     @property
-    def num_mbs_in_token_ids(self) -> int:
-        return self.num_mbs_in_part * self.num_parts
-
-    @property
     def num_tokens_in_window(self) -> int:
         return self.context_size + 1
 
@@ -105,20 +101,23 @@ class TrainPrep:
         assert float(result).is_integer()
         return int(result)
 
+    @property
+    def num_mbs(self) -> int:
+        return self.num_mbs_in_part * self.num_parts
+
     # /////////////////////////////////////////////////////////////////// mbs
 
     @cached_property
-    def last_mb(self) -> int:
-        return self.num_parts * self.num_mbs_in_block
+    def num_mbs_per_eval(self):
+        return self.num_mbs // self.num_evaluations
 
     @cached_property
     def eval_mbs(self) -> List[int]:
         """
-        self.stop_mb % self.num_evaluations == 0 is not guaranteed to be True, but that is okay
+        mini-batches at which evaluation should take place
         """
-        mbs_in_timepoint = self.last_mb // self.num_evaluations
-        end = mbs_in_timepoint * self.num_evaluations + mbs_in_timepoint
-        eval_mbs = list(range(0, end, mbs_in_timepoint))
+        end = self.num_mbs_per_eval * self.num_evaluations + self.num_mbs_per_eval
+        eval_mbs = list(range(0, end, self.num_mbs_per_eval))
         return eval_mbs
 
     @cached_property

@@ -1,4 +1,6 @@
-# Preppy
+<div align="center">
+ <img src="images/logo.png" width="250"> 
+</div>
 
 A small Python package for preparing *ordered* language data for RNN language models.
 

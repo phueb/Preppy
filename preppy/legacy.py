@@ -57,6 +57,12 @@ class TrainPrep:
         self.num_evaluations = num_evaluations
         self.shuffle_within_part = shuffle_within_part
 
+        self.token_ids_array = np.array(self.store.token_ids, dtype=np.int64)
+        if self.token_ids_array.dtype == np.int64:
+            self.stride = 8  # bytes because 64 bits = 2 bytes ; changing this may cause CUDA error
+        else:
+            raise ValueError('Stride must be changed if data-type is changed')
+
     @property
     def num_mbs_in_part(self) -> int:
         result = self.num_windows_in_part / self.batch_size
@@ -158,6 +164,21 @@ class TrainPrep:
             return strided[::-1]
         else:
             return strided
+
+    @cached_property
+    def reordered_windows(self) -> np.ndarray:
+        """
+        not used during training, but is useful for offline analysis of data
+        """
+        num_possible_windows = len(self.token_ids_array) - self.num_tokens_in_window
+        shape = (num_possible_windows, self.num_tokens_in_window)
+        res = as_strided(self.token_ids_array, shape, strides=(self.stride, self.stride), writeable=False)
+        print(f'Matrix containing all windows has shape={res.shape}')
+
+        if self.reverse:
+            return np.flip(res, axis=0)
+        else:
+            return res
 
     def gen_windows(self,
                     iterate_once: Optional[bool] = False,

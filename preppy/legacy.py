@@ -159,9 +159,9 @@ class TrainPrep:
             self.store.set_tokens(tokens)
 
         # strided is very memory efficient as it operates on views of original data
-        strided = as_strided(np.array(self.store.token_ids, dtype=np.int16),  # do not change d-type without strides
+        strided = as_strided(self.token_ids_array,  # do not change d-type without strides
                              shape=(self.num_parts, self.num_tokens_in_part),
-                             strides=(2 * self.num_tokens_in_part, 2),
+                             strides=(self.stride * self.num_tokens_in_part, self.stride),
                              writeable=False)
         if self.reverse:
             return strided[::-1]

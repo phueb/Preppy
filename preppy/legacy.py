@@ -102,8 +102,12 @@ class TrainPrep:
         return int(result)
 
     @property
-    def num_mbs(self) -> int:
+    def num_mbs_without_iterations(self) -> int:
         return self.num_mbs_in_part * self.num_parts
+
+    @property
+    def num_mbs(self) -> int:
+        return self.num_mbs_in_block * self.num_parts
 
     # /////////////////////////////////////////////////////////////////// mbs
 

@@ -57,17 +57,6 @@ class TrainPrep:
         self.num_evaluations = num_evaluations
         self.shuffle_within_part = shuffle_within_part
 
-        self.token_ids_array = np.array(self.store.token_ids, dtype=np.int64)
-        if self.token_ids_array.dtype == np.int64:
-            self.stride = 8  # bytes because 64 bits = 2 bytes ; changing this may cause CUDA error
-        else:
-            raise ValueError('Stride must be changed if data-type is changed')
-
-    @property
-    def num_mbs_in_part(self) -> int:
-        result = self.num_windows_in_part / self.batch_size
-        assert result.is_integer()
-        return int(result)
 
     @property
     def num_iterations_list(self) -> List[int]:
@@ -80,12 +69,10 @@ class TrainPrep:
         assert float(result).is_integer()
         return int(result)
 
+
     @property
-    def num_mbs_in_block(self) -> int:
-        """
-        a block is a partition that has been repeated num_iterations times
-        """
-        return self.num_mbs_in_part * self.mean_num_iterations
+    def num_mbs_in_token_ids(self) -> int:
+        return self.num_mbs_in_part * self.num_parts
 
     @property
     def num_tokens_in_window(self) -> int:
@@ -101,36 +88,46 @@ class TrainPrep:
         assert float(result).is_integer()
         return int(result)
 
+    # /////////////////////////////////////////////////////////////////// mbs
+
     @property
-    def num_mbs_without_iterations(self) -> int:
-        return self.num_mbs_in_part * self.num_parts
+    def num_mbs_in_part(self) -> int:
+        result = self.num_windows_in_part / self.batch_size
+        assert result.is_integer()
+        return int(result)
+
+    @property
+    def num_mbs_in_block(self) -> int:
+        """a block is a partition that has been repeated num_iterations times"""
+        return self.num_mbs_in_part * self.mean_num_iterations
 
     @property
     def num_mbs(self) -> int:
+        """number of total mini-batches considering iterations"""
         return self.num_mbs_in_block * self.num_parts
 
-    # /////////////////////////////////////////////////////////////////// mbs
-
     @cached_property
-    def num_mbs_per_eval(self):
-        return self.num_mbs // self.num_evaluations
+    def num_mbs_per_eval(self) -> int:
+        res = self.num_mbs / self.num_evaluations
+        assert float(res).is_integer()
+        return int(res)
 
     @cached_property
     def eval_mbs(self) -> List[int]:
-        """
-        mini-batches at which evaluation should take place
-        """
+        """mini-batches at which evaluation should take place"""
         end = self.num_mbs_per_eval * self.num_evaluations + self.num_mbs_per_eval
         eval_mbs = list(range(0, end, self.num_mbs_per_eval))
         return eval_mbs
 
     @cached_property
-    def stop_mb(self):
+    def stop_mb(self) -> int:
         """
         this is where training actually stops.
         it is not guaranteed to be the last mb, due to equally dividing mbs into eval_mbs
         """
-        return self.eval_mbs[-1]
+        res = self.eval_mbs[-1]
+        assert res == self.num_mbs, (res, self.num_mbs)
+        return res
 
     # /////////////////////////////////////////////////////////////////// parts & windows
 
@@ -158,24 +155,25 @@ class TrainPrep:
             tokens = reduce(iconcat, sentences1, []) + reduce(iconcat, sentences2, [])
             self.store.set_tokens(tokens)
 
-        # strided is very memory efficient as it operates on views of original data
-        strided = as_strided(self.token_ids_array,  # do not change d-type without strides
-                             shape=(self.num_parts, self.num_tokens_in_part),
-                             strides=(self.stride * self.num_tokens_in_part, self.stride),
-                             writeable=False)
+        # is very memory efficient as it operates on views of original data
+        res = as_strided(np.array(self.store.token_ids, dtype=np.int64),  # do not change d-type without strides
+                         shape=(self.num_parts, self.num_tokens_in_part),
+                         strides=(8 * self.num_tokens_in_part, 8),
+                         writeable=False)
         if self.reverse:
-            return strided[::-1]
+            return np.flip(res, axis=0)
         else:
-            return strided
+            return res
 
     @cached_property
     def reordered_windows(self) -> np.ndarray:
         """
         not used during training, but is useful for offline analysis of data
         """
-        num_possible_windows = len(self.token_ids_array) - self.num_tokens_in_window
-        shape = (num_possible_windows, self.num_tokens_in_window)
-        res = as_strided(self.token_ids_array, shape, strides=(self.stride, self.stride), writeable=False)
+        num_possible_windows = len(self.store.token_ids) - self.num_tokens_in_window
+        res = as_strided(np.array(self.store.token_ids, dtype=np.int64),
+                         shape=(num_possible_windows, self.num_tokens_in_window),
+                         strides=(8, 8), writeable=False)
         print(f'Matrix containing all windows has shape={res.shape}')
 
         if self.reverse:
@@ -188,7 +186,7 @@ class TrainPrep:
                     reordered_parts: Optional[List[List[int]]] = None
                     ) -> Generator[np.ndarray, None, None]:
         """
-        generates windows with structure [context, target] where contex is a list of word IDs and target is a word ID.
+        generates windows with structure [context, target] where context is a list of word IDs and target is a word ID.
         """
 
         if iterate_once:  # useful for computing perplexity on train split

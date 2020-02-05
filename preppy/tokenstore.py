@@ -18,7 +18,7 @@ class TokenStore(object):
                  num_parts: int,
                  batch_size: int,
                  context_size: int,
-                 num_types: Union[int, None],
+                 num_types: Optional[None],
                  _types: Optional[list] = None,  # pass a vocabulary when tokens originate in test split
                  oov: str = config.Symbols.OOV,
                  ):
@@ -34,7 +34,7 @@ class TokenStore(object):
         self.tokens_no_oov = self.prune(tokens)  # now tokens does not have to be stored in memory
         del tokens
 
-    def make_pruning_length(self, num_raw, max_num_docs=2048) -> int:
+    def make_pruning_length(self, num_raw) -> int:
         """
         Find length by which to prune tokens such that result is divisible by num_docs and
         such that the result of this division is divisible by batch_size
@@ -45,12 +45,12 @@ class TokenStore(object):
         should only be added once only to each document
         """
         # factor
-        num_words_in_window = self.context_size + 1
-        factor = self.batch_size * (max_num_docs if self._types is None else 1) + num_words_in_window
+        num_parts = self.num_parts if self._types is None else 1
+        factor = self.batch_size * (num_parts if self._types is None else 1) + self.context_size
+        print('factor', factor)
         # make divisible
         num_factors = num_raw // factor
-        num_parts = self.num_parts if self._types is None else 1
-        adj = (num_factors - num_parts) * num_words_in_window
+        adj = (num_factors - num_parts) * self.context_size
         result = num_factors * factor - adj
         return result
 
@@ -74,7 +74,10 @@ class TokenStore(object):
     def types(self) -> List[str]:
         if self._types is None:
             most_freq_words = list(islice(self.w2f_no_oov.keys(), 0, self.num_types))
-            sorted_words = sorted(most_freq_words[:-1] + [self.oov])
+            if self.num_types is not None:
+                sorted_words = sorted(most_freq_words[:-1] + [self.oov])
+            else:
+                sorted_words = sorted(most_freq_words)
             result = SortedSet(sorted_words)
         else:
             result = self._types

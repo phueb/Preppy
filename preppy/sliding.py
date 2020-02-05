@@ -8,7 +8,7 @@ instead, batches of windows are created by:
 this has the effect of presenting data in a more "incremental" fashion to an RNN.
 """
 
-from typing import List, Generator, Union
+from typing import List, Generator, Optional
 from cached_property import cached_property
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
@@ -18,7 +18,7 @@ from operator import iconcat
 from preppy.tokenstore import TokenStore
 
 
-class Prep:
+class SlidingPrep:
     """
     generates batches of windows of word IDs.
     a window consists of a multi-word context + a single word (which is predicted)
@@ -41,8 +41,8 @@ class Prep:
                  slide_size: int,
                  batch_size: int,
                  context_size: int,
-                 num_evaluations: int,
-                 vocab: Union[List[str], None] = None,  # pass a vocab when initializing with held-out documents
+                 num_evaluations: int = 10,
+                 vocab: Optional[List[str]] = None,  # pass a vocab when initializing with held-out documents
                  ):
 
         # make store
@@ -79,7 +79,7 @@ class Prep:
 
     @cached_property
     def num_mbs(self) -> int:
-        result = self.num_windows // self.slide_size  # TODO is this correct?
+        result = self.num_windows // self.slide_size
         return int(result)
 
     # /////////////////////////////////////////////////////////////////// mbs
@@ -87,7 +87,7 @@ class Prep:
     @cached_property
     def num_mbs_per_eval(self):
         return self.num_mbs // self.num_evaluations
-    
+
     @cached_property
     def eval_mbs(self) -> List[int]:
         """
@@ -108,6 +108,12 @@ class Prep:
     # /////////////////////////////////////////////////////////////////// windows
 
     @cached_property
+    def midpoint(self) -> int:
+        res = self.store.num_tokens // 2
+        assert res * 2 == self.store.num_tokens
+        return res
+
+    @cached_property
     def reordered_windows(self) -> np.ndarray:
         """
         not used during training, but is useful for offline analysis of data
@@ -123,12 +129,12 @@ class Prep:
             return res
 
     def gen_windows(self) -> Generator[np.ndarray, None, None]:
-        # generate batches of windows - implementations is memory efficient because as_strided() returns views
-        windows_stack = as_strided(self.token_ids_array,
-                                   shape=(self.num_mbs, self.batch_size, self.num_tokens_in_window),
-                                   strides=(self.stride * self.slide_size, self.stride, self.stride),
-                                   writeable=False)
+        """yield from 3d array where each 2d slice is a batch of windows with shape (batch_size, context_size)"""
+        batches = as_strided(self.token_ids_array,
+                             shape=(self.num_mbs, self.batch_size, self.num_tokens_in_window),
+                             strides=(self.stride * self.slide_size, self.stride, self.stride),
+                             writeable=False)
         if self.reverse:
-            yield from np.flip(windows_stack, axis=0)
+            yield from np.flip(batches, axis=0)
         else:
-            yield from windows_stack
+            yield from batches

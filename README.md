@@ -8,12 +8,12 @@ A small Python package for preparing *ordered* language data for RNN language mo
 ## Usage
 
 ```python
-from preppy.latest import Prep
+from preppy.sliding import SlidingPrep
 
 train_documents = ['Hello World', 'Hello again']
 
-prep = Prep(train_documents,
-            reverse=False  # generate batches starting from last document
+prep = SlidingPrep(train_documents,
+            reverse=False,  # generate batches starting from last document
             num_types=2,   # vocabulary size
             slide_size=2,   # number of words skipped when sliding batch across corpus
             batch_size=1,   # batch size 

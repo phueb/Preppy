@@ -47,7 +47,6 @@ class TokenStore(object):
         # factor
         num_parts = self.num_parts if self._types is None else 1
         factor = self.batch_size * (num_parts if self._types is None else 1) + self.context_size
-        print('factor', factor)
         # make divisible
         num_factors = num_raw // factor
         adj = (num_factors - num_parts) * self.context_size

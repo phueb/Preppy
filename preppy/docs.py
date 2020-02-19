@@ -9,7 +9,8 @@ def load_docs(corpus_path: Path,
               test_doc_ids: Optional[List[int]] = None,
               num_test_docs: Optional[int] = 100,
               shuffle_seed: Optional[int] = 20,
-              split_seed: Optional[int] = 3
+              split_seed: Optional[int] = 3,
+              remove_symbols: Optional[List[str]] = None,
               ) -> Tuple[List[str], List[str]]:
 
     text_in_file = corpus_path.read_text()
@@ -31,6 +32,11 @@ def load_docs(corpus_path: Path,
         print(f'Assigning {num_s_in_doc} sentences to each new document')
         docs = [' '.join([w for s in s_chunk for w in s]) for s_chunk in split(sentences, num_s_in_doc)]
         print(f'After shuffling, number of docs={len(docs)}')
+        
+    if remove_symbols is not None:
+        for n in range(num_docs):
+            for symbol in remove_symbols:
+                docs[n] =docs[n].replace(f'{symbol} ', '')
 
     # split train/test
     print('Splitting docs into train and test...')

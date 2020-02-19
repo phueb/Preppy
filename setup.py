@@ -1,11 +1,10 @@
 from setuptools import setup
 
-from preppy import __name__, __version__
 
 setup(
-    name=__name__,
-    version=__version__,
-    packages=[__name__],
+    name='preppy',
+    version='2.0.0',
+    packages=['preppy'],
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     classifiers=[

@@ -48,7 +48,7 @@ class FlexiblePrep:
 
         self.reverse = reverse
         self.sliding = sliding
-        self.num_types = num_types
+        self.num_types = num_types or len(self.store.types)
         self.num_parts = num_parts
         self.num_iterations = num_iterations
         self.batch_size = batch_size

@@ -50,7 +50,7 @@ class PartitionedPrep:
         self.store = TokenStore(tokens, num_parts, batch_size, context_size, num_types)
 
         self.reverse = reverse
-        self.num_types = num_types
+        self.num_types = num_types or len(self.store.types)
         self.num_parts = num_parts
         self.num_iterations = num_iterations
         self.batch_size = batch_size
@@ -179,14 +179,16 @@ class PartitionedPrep:
             return np.flip(res, axis=0)
         else:
             return res
+        
+    def generate_batches(self):
+        """alias of gen_windows()"""
+        yield from self.gen_windows()
 
     def gen_windows(self,
                     iterate_once: Optional[bool] = False,
                     reordered_parts: Optional[List[List[int]]] = None
                     ) -> Generator[np.ndarray, None, None]:
-        """
-        generates windows with structure [context, target] where context is a list of word IDs and target is a word ID.
-        """
+        """yield from 3d array where each 2d slice is a batch of windows with shape (batch_size, context size + 1)"""
 
         if iterate_once:  # useful for computing perplexity on train split
             num_iterations_list = [1] * self.num_parts

@@ -37,7 +37,7 @@ class SlidingPrep:
     def __init__(self,
                  docs: List[str],
                  reverse: bool,
-                 num_types: int,
+                 num_types: Optional[int],
                  slide_size: int,
                  batch_size: int,
                  context_size: int,
@@ -52,7 +52,7 @@ class SlidingPrep:
         self.store = TokenStore(tokens, num_parts, batch_size, context_size, num_types, vocab)
 
         self.reverse = reverse
-        self.num_types = num_types
+        self.num_types = num_types or len(self.store.types)
         self.slide_size = slide_size
         self.batch_size = batch_size
         self.context_size = context_size
@@ -127,9 +127,13 @@ class SlidingPrep:
             return np.flip(res, axis=0)
         else:
             return res
+        
+    def generate_batches(self):
+        """alias of gen_windows()"""
+        yield from self.gen_windows()
 
     def gen_windows(self) -> Generator[np.ndarray, None, None]:
-        """yield from 3d array where each 2d slice is a batch of windows with shape (batch_size, context_size)"""
+        """yield from 3d array where each 2d slice is a batch of windows with shape (batch_size, context size + 1)"""
         batches = as_strided(self.token_ids_array,
                              shape=(self.num_mbs, self.batch_size, self.num_tokens_in_window),
                              strides=(self.stride * self.slide_size, self.stride, self.stride),

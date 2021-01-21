@@ -15,7 +15,7 @@ from operator import iconcat
 from numpy.lib.stride_tricks import as_strided
 
 from preppy.tokenstore import TokenStore
-from preppy.utils import split_into_sentences
+from preppy.util import split_into_sentences
 
 
 class FlexiblePrep:

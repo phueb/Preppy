@@ -38,9 +38,9 @@ class SlidingPrep:
                  docs: List[str],
                  reverse: bool,
                  num_types: Optional[int],
-                 slide_size: int,
                  batch_size: int,
                  context_size: int,
+                 slide_size: Optional[int] = None,
                  num_evaluations: int = 10,
                  vocab: Optional[List[str]] = None,  # pass a vocab when initializing with held-out documents
                  ):
@@ -53,7 +53,7 @@ class SlidingPrep:
 
         self.reverse = reverse
         self.num_types = num_types or len(self.store.types)
-        self.slide_size = slide_size
+        self.slide_size = slide_size or batch_size
         self.batch_size = batch_size
         self.context_size = context_size
         self.num_evaluations = num_evaluations

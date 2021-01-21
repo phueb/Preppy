@@ -4,7 +4,7 @@ from sortedcontainers import SortedSet
 from itertools import islice
 from typing import List, Dict, Union, Optional
 
-from preppy import config
+from preppy import configs
 
 
 class TokenStore(object):
@@ -20,7 +20,7 @@ class TokenStore(object):
                  context_size: int,
                  num_types: Optional[None],
                  _types: Optional[list] = None,  # pass a vocabulary when tokens originate in test split
-                 oov: str = config.Symbols.OOV,
+                 oov: str = configs.Symbols.OOV,
                  ):
 
         self.num_parts = num_parts

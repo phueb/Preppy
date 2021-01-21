@@ -5,7 +5,7 @@ multiple iterations were used in 2019 master's thesis of PH.
 
 """
 
-from typing import List, Optional, Generator
+from typing import List, Optional, Generator, Tuple
 from cached_property import cached_property
 import numpy as np
 import random
@@ -14,7 +14,7 @@ from operator import iconcat
 from numpy.lib.stride_tricks import as_strided
 
 from preppy.tokenstore import TokenStore
-from preppy.utils import split_into_sentences, make_windows_mat
+from preppy.util import split_into_sentences, make_windows_mat
 
 
 class PartitionedPrep:
@@ -30,7 +30,7 @@ class PartitionedPrep:
                  reverse: bool,
                  num_types: Optional[int],  # can be None
                  num_parts: int,
-                 num_iterations: List[int],
+                 num_iterations: Tuple[int, int],
                  batch_size: int,
                  context_size: int,
                  num_evaluations: int = 10,
@@ -57,6 +57,12 @@ class PartitionedPrep:
         self.context_size = context_size
         self.num_evaluations = num_evaluations
         self.shuffle_within_part = shuffle_within_part
+
+        self.token_ids_array = np.array(self.store.token_ids, dtype=np.int64)
+        if self.token_ids_array.dtype == np.int64:
+            self.stride = 8  # bytes because 64 bits = 2 bytes ; changing this may cause CUDA error
+        else:
+            raise ValueError('Stride must be changed if data-type is changed')
 
     @property
     def num_iterations_list(self) -> List[int]:

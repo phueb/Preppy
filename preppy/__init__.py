@@ -1,6 +1,6 @@
-from preppy.partitioned import PartitionedPrep
-from preppy.sliding import SlidingPrep
+from preppy.legacy import PartitionedPrep
 from preppy.flexible import FlexiblePrep
+from preppy.sliding import SlidingPrep
 
 
 

@@ -15,7 +15,7 @@ from numpy.lib.stride_tricks import as_strided
 from functools import reduce
 from operator import iconcat
 
-from preppy.tokenstore import TokenStore
+from preppy.legacy import TokenStore
 
 
 class SlidingPrep:

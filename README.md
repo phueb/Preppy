@@ -4,26 +4,27 @@
 
 A small Python package for preparing *ordered* language data for RNN language models.
 
+The user can chose white-space tokenization or Byte-Level BPE tokenization, provided by the `tokenizers` package.
 
 ## Usage
 
 ```python
-from preppy.sliding import SlidingPrep
+from preppy import FlexiblePrep
 
-train_documents = ['Hello World', 'Hello again']
+sentences = ['Hello World.', 'Hello World.']
 
-prep = SlidingPrep(train_documents,
+prep = FlexiblePrep(sentences,
             reverse=False,  # generate batches starting from last document
-            num_types=2,   # vocabulary size
-            slide_size=2,   # number of words skipped when sliding batch across corpus
+            num_types=2,    # if not None, create B-BPE tokenizer
             batch_size=1,   # batch size 
             context_size=1, # number of back-prop-through-time steps
-            num_evaluations=2)  # number of times evaluation of learning will take place during training
+            sliding=False,  # windows slide over input text
+            )
             
-for batch in prep.gen_windows():
+for batch in prep.generate_batches():
    pass  # train model on batch
 ```
 
 ## Compatibility
 
-Developed on Ubuntu 16.04 and Python 3.6
+Developed on Ubuntu 18.04 and Python 3.7

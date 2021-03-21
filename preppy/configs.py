@@ -1,4 +1,4 @@
 
 
 class Symbols:
-    OOV = 'OOV'
+    unk = '<unk>'

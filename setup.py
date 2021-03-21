@@ -11,10 +11,11 @@ setup(
         'Intended Audience :: Science/Research'],
     pyython_requires='>=3.6.8',
     install_requires=[
-        'numpy',
-        'attrs',
+        'numpy==1.17.3',
+        'tokenizers==0.10.1',
         'cached_property',
-        'sortedcontainers'
+        'sortedcontainers',
+        'cached_property',
     ],
     url='https://github.com/phueb/Preppy',
     license='',

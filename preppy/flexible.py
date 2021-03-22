@@ -250,24 +250,6 @@ class Prep:
         else:
             return res
 
-    @cached_property
-    def reordered_windows(self) -> np.ndarray:
-        """
-        not used during training, but is useful for offline analysis of data
-        """
-        token_ids = [self.token2id[t] for t in self.tokens]
-
-        num_possible_windows = len(token_ids) - self.context_size
-        res = as_strided(np.array(token_ids, dtype=np.int64),
-                         shape=(num_possible_windows, self.num_tokens_in_window),
-                         strides=(8, 8), writeable=False)
-        print(f'Matrix containing all windows has shape={res.shape}')
-
-        if self.reverse:
-            return np.flip(res, axis=0)
-        else:
-            return res
-
     def batches_from_strides(self,
                              part: List[int],
                              num_iterations: int,
@@ -340,3 +322,27 @@ class Prep:
             # get batches by iterating over ordered partitions of tokens
             else:
                 yield from chain.from_iterable(repeat(tuple(batches), num_iterations))
+
+    # /////////////////////////////////////////////////////////////////// for analysis, not batching
+
+    @cached_property
+    def reordered_windows(self) -> np.ndarray:
+        """
+        not used during training, but is useful for offline analysis of data
+        """
+        token_ids = [self.token2id[t] for t in self.tokens]
+
+        num_possible_windows = len(token_ids) - self.context_size
+        res = as_strided(np.array(token_ids, dtype=np.int64),
+                         shape=(num_possible_windows, self.num_tokens_in_window),
+                         strides=(8, 8), writeable=False)
+        print(f'Matrix containing all windows has shape={res.shape}')
+
+        if self.reverse:
+            return np.flip(res, axis=0)
+        else:
+            return res
+
+    @cached_property
+    def reordered_parts(self):
+        return self.get_reordered_parts(self.tokens, num_parts=1)

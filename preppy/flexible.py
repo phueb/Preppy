@@ -21,7 +21,7 @@ from cached_property import cached_property
 from tokenizers.implementations.byte_level_bpe import ByteLevelBPETokenizer, AddedToken
 
 
-class FlexiblePrep:
+class Prep:
     """
     generate batches containing windows of word IDs.
     a window consists of a multi-word context + a single word (which is predicted)

@@ -1,10 +1,8 @@
 import unittest
 import numpy as np
-from pathlib import Path
-from functools import reduce
-from operator import iconcat
 
-from preppy.flexible import FlexiblePrep
+
+from preppy.flexible import Prep
 
 
 class MyTest(unittest.TestCase):
@@ -29,23 +27,23 @@ class MyTest(unittest.TestCase):
         num_parts = 2
         batch_size = 6
 
-        prep_s = FlexiblePrep(sentences,
-                              reverse=reverse,
-                              sliding=True,
-                              num_iterations=num_iterations,
-                              context_size=context_size,
-                              num_parts=num_parts,
-                              batch_size=batch_size,
-                              )
+        prep_s = Prep(sentences,
+                      reverse=reverse,
+                      sliding=True,
+                      num_iterations=num_iterations,
+                      context_size=context_size,
+                      num_parts=num_parts,
+                      batch_size=batch_size,
+                      )
 
-        prep_p = FlexiblePrep(sentences,
-                              reverse=reverse,
-                              sliding=False,
-                              num_iterations=num_iterations,
-                              context_size=context_size,
-                              num_parts=num_parts,
-                              batch_size=batch_size,
-                              )
+        prep_p = Prep(sentences,
+                      reverse=reverse,
+                      sliding=False,
+                      num_iterations=num_iterations,
+                      context_size=context_size,
+                      num_parts=num_parts,
+                      batch_size=batch_size,
+                      )
 
         # test
         for n, bs in enumerate(prep_s.generate_batches()):

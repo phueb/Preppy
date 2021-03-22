@@ -1,9 +1,11 @@
 from setuptools import setup
 
+from preppy import __version__
+
 
 setup(
     name='preppy',
-    version='2.0.1',
+    version=__version__,
     packages=['preppy'],
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

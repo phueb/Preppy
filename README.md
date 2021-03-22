@@ -9,7 +9,7 @@ The user can chose white-space tokenization or Byte-Level BPE tokenization, prov
 ## Usage
 
 ```python
-from preppy import FlexiblePrep
+from preppy import Prep
 
 sentences = ['Hello World.', 'Hello World.']
 

@@ -102,7 +102,7 @@ class Prep:
         # remove empty tokens
         tokens = [t for t in tokens if t not in {'Ġ', '', ' '}]
         print(f'{len(text.split()):,}|{len(tokens):,} tokens before|after tokenization. ')
-        print(f'Encoded text with {len(set(tokens)):,}types.')
+        print(f'Encoded text with {len(set(tokens)):,} types.')
 
         # check that added tokens were not split during tokenization
         for special_t in special_tokens:
@@ -345,4 +345,4 @@ class Prep:
 
     @cached_property
     def reordered_parts(self):
-        return self.get_reordered_parts(self.tokens, num_parts=1)
+        return self.get_reordered_parts(self.tokens, self.num_parts)

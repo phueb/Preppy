@@ -13,7 +13,7 @@ from preppy import Prep
 
 sentences = ['Hello World.', 'Hello World.']
 
-prep = FlexiblePrep(sentences,
+prep = Prep(sentences,
             reverse=False,  # generate batches starting from last document
             num_types=2,    # if not None, create B-BPE tokenizer
             batch_size=1,   # batch size 

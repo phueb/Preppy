@@ -9,7 +9,7 @@ setup(
     long_description_content_type="text/markdown",
     classifiers=[
         'Intended Audience :: Science/Research'],
-    pyython_requires='>=3.6.8',
+    pyython_requires='>=3.7',
     install_requires=[
         'numpy==1.18.1',
         'tokenizers==0.10.1',

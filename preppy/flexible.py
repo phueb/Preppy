@@ -53,7 +53,7 @@ class FlexiblePrep:
                 raise ValueError('Remove all newline characters before passing text to Prep')
 
             for char in set(s):
-                if char != ' ' and char not in set(string.ascii_lowercase + string.punctuation):
+                if char != ' ' and char not in set(string.ascii_lowercase + string.punctuation + string.digits):
                     raise ValueError(f'Character "{char}" not allowed in Prep')
 
         if special_tokens is None:

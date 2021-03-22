@@ -13,7 +13,7 @@ setup(
         'Intended Audience :: Science/Research'],
     pyython_requires='>=3.6.8',
     install_requires=[
-        'numpy==1.17.3',
+        'numpy==1.18.1',
         'tokenizers==0.10.1',
         'cached_property',
         'sortedcontainers',

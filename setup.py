@@ -1,11 +1,9 @@
 from setuptools import setup
 
-from preppy import __version__
-
 
 setup(
     name='preppy',
-    version=__version__,
+    version='2.1.0',  # keep version here, otherwise import error during install
     packages=['preppy'],
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

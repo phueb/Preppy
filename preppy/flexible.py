@@ -59,6 +59,7 @@ class Prep:
         if special_tokens is None:
             special_tokens = []
 
+        self.sentences = sentences
         self.reverse = reverse
         self.sliding = sliding
         self._num_types = num_types

@@ -92,10 +92,11 @@ class Prep:
                                           special_tokens=[AddedToken(t, single_word=True) for t in special_tokens],
                                           )
             print('Tokenizing text with Byte-Level BPE...')
-            tokens = [t.lstrip('Ġ').strip() for t in tokenizer.encode(text,
-                                                                      add_special_tokens=True,
-                                                                      ).tokens]
-
+            tokens_bpe = tokenizer.encode(text,add_special_tokens=True).tokens
+            print(f'Encoded text with {len(set(tokens_bpe)):,} types before stripping Ġ from tokens.')
+            # this number will be less than num_types because B-BPE vocab also has single-byte vocab entries
+            # for encoding any unseen text without UNK
+            tokens = [t.lstrip('Ġ').strip() for t in tokens_bpe]
         else:
             print('Tokenizing text by splitting on white space...')
             tokens = text.split()
@@ -103,7 +104,7 @@ class Prep:
         # remove empty tokens
         tokens = [t for t in tokens if t not in {'Ġ', '', ' '}]
         print(f'{len(text.split()):,}|{len(tokens):,} tokens before|after tokenization. ')
-        print(f'Encoded text with {len(set(tokens)):,} types.')
+        print(f'{len(set(tokens)):,} types in tokenized text')
 
         # check that added tokens were not split during tokenization
         num_errors = 0

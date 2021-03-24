@@ -106,9 +106,13 @@ class Prep:
         print(f'Encoded text with {len(set(tokens)):,} types.')
 
         # check that added tokens were not split during tokenization
+        num_errors = 0
         for special_t in special_tokens:
             if special_t not in tokens and special_t in text.split():
                 print(f'"{special_t:<24}" occurs {text.split().count(special_t)} times in raw text but not in tokenized text.')
+                num_errors += 1
+        if num_errors:
+            raise RuntimeError(f'{num_errors} special tokens were not found in tokenized text.')
 
         # find num_tokens_train so that batching works
         # implementation note: find largest number of batches,

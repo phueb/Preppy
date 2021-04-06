@@ -93,10 +93,6 @@ class Prep:
                                           # must set single_word=True
                                           special_tokens=[AddedToken(t, single_word=True) for t in special_tokens],
                                           )
-
-            for k, v in sorted(tokenizer.get_vocab().items(), key=lambda i: i[1])[500:1000]:
-                print(f'{v:>12} {k:<24}')
-
             print('Tokenizing text with Byte-Level BPE...', flush=True)
             tokens_bpe = tokenizer.encode(text,add_special_tokens=True).tokens
             print(f'Encoded text with {len(set(tokens_bpe)):,} types before stripping Ġ from tokens.')

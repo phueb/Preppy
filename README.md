@@ -4,7 +4,7 @@
 
 A small Python package for preparing *ordered* language data for RNN language models.
 
-The user can chose white-space tokenization or Byte-Level BPE tokenization, provided by the `tokenizers` package.
+Tokenization is not included.
 
 ## Usage
 
@@ -15,7 +15,6 @@ sentences = ['Hello World.', 'Hello World.']
 
 prep = Prep(sentences,
             reverse=False,  # generate batches starting from last document
-            num_types=2,    # if not None, create B-BPE tokenizer
             batch_size=1,   # batch size 
             context_size=1, # number of back-prop-through-time steps
             sliding=False,  # windows slide over input text

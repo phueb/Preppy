@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='preppy',
-    version='2.1.2',  # keep version here, otherwise import error during install
+    version='3.0.0',  # keep version here, otherwise import error during install
     packages=['preppy'],
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -12,7 +12,6 @@ setup(
     pyython_requires='>=3.7',
     install_requires=[
         'numpy==1.18.1',
-        'tokenizers==0.10.1',
         'cached_property',
         'sortedcontainers',
         'cached_property',

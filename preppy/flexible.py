@@ -2,7 +2,6 @@
 This Prep is an improved version of PartitionedPrep
 because:
 - it can generate batches of windows that slide incrementally over data
-- it uses B-BPE tokenization, optionally
 - handles both train and test tokens in one object
 - prunes tokens more conservatively
 
@@ -10,15 +9,12 @@ because:
 
 from typing import List, Optional, Generator, Tuple, Dict
 import numpy as np
-import random
 from itertools import chain, repeat
 import itertools
 from numpy.lib.stride_tricks import as_strided
 import string
 from sortedcontainers import SortedSet
 from cached_property import cached_property
-
-from tokenizers.implementations.byte_level_bpe import ByteLevelBPETokenizer, AddedToken
 
 
 class Prep:
@@ -30,92 +26,41 @@ class Prep:
     """
 
     def __init__(self,
-                 sentences: List[str],
+                 tokens: List[str],
                  reverse: bool,
                  sliding: bool,
-                 num_types: Optional[int] = None,  # can be None
                  num_parts: int = 2,
                  num_iterations: Tuple[int, int] = (8, 32),
                  batch_size: int = 64,
                  context_size: int = 7,
                  shuffle_within_part: bool = False,
-                 shuffle_sentences: bool = False,
-                 special_tokens: Optional[List[str]] = None,
                  min_num_test_tokens: int = 0,
                  disallow_non_ascii: bool = False,
+                 token2id: Optional[Dict[str, int]] = None,
                  ):
 
-        if not isinstance(sentences, list):
-            raise TypeError('Input to Prep must be a list of sentences of type List[str]')
+        if not isinstance(tokens, list):
+            raise TypeError('Input to Prep must be a list of tokens')
 
         # check for non-ascii characters and new-lines
-        for s in sentences:
-            if '\n' in s:
+        for t in tokens:
+            if '\n' == t:
                 raise ValueError('Remove all newline characters before passing text to Prep')
 
             if disallow_non_ascii:
-                for char in set(s):
+                for char in set(t):
                     if char != ' ' and char not in set(string.ascii_lowercase + string.punctuation + string.digits):
                         raise ValueError(f'Character "{char}" not allowed in Prep')
 
-        if special_tokens is None:
-            special_tokens = []
-
-        self.sentences = sentences
         self.reverse = reverse
         self.sliding = sliding
-        self._num_types = num_types
         self.num_parts = num_parts
         self.num_iterations = num_iterations
         self.batch_size = batch_size
         self.context_size = context_size
         self.shuffle_within_part = shuffle_within_part
-        self.shuffle_sentences = shuffle_sentences
-        self.special_tokens = special_tokens
         self.min_num_test_tokens = min_num_test_tokens
-
-        # shuffle at sentence level
-        # # note: this removes clustering of same-age sentences within parts, necessary when training in shuffled order
-        if self.shuffle_sentences:
-            random.shuffle(sentences)
-
-        # tokenize text
-        text = ' '.join(sentences)
-        if num_types is not None:
-            for special_token in special_tokens:
-                assert special_token in text
-            # only use tokenizer for tokenization, but not vocab
-            print(f'Train B-BPE tokenizer with vocab size={num_types:,}', flush=True)
-            tokenizer = ByteLevelBPETokenizer(lowercase=True)
-            tokenizer.train_from_iterator(sentences,
-                                          vocab_size=num_types,
-                                          min_frequency=1,
-                                          # must set single_word=True
-                                          special_tokens=[AddedToken(t, single_word=True) for t in special_tokens],
-                                          )
-            print('Tokenizing text with Byte-Level BPE...', flush=True)
-            tokens_bpe = tokenizer.encode(text,add_special_tokens=True).tokens
-            print(f'Encoded text with {len(set(tokens_bpe)):,} types before stripping Ġ from tokens.')
-            # this number will be less than num_types because B-BPE vocab also has single-byte vocab entries
-            # for encoding any unseen text without UNK
-            tokens = [t.lstrip('Ġ').strip() for t in tokens_bpe]
-        else:
-            print('Tokenizing text by splitting on white space...')
-            tokens = text.split()
-
-        # remove empty tokens
-        tokens = [t for t in tokens if t not in {'Ġ', '', ' '}]
-        print(f'{len(text.split()):,}|{len(tokens):,} tokens before|after tokenization. ')
-        print(f'{len(set(tokens)):,} types in tokenized text', flush=True)
-
-        # check that added tokens were not split during tokenization
-        num_errors = 0
-        for special_t in special_tokens:
-            if special_t not in tokens and special_t in text.split():
-                print(f'"{special_t:<24}" occurs {text.split().count(special_t)} times in raw text but not in tokenized text.')
-                num_errors += 1
-        if num_errors:
-            raise RuntimeError(f'{num_errors} special tokens were not found in tokenized text.')
+        self._token2id = token2id  # can be overwritten by user
 
         # find num_tokens_train so that batching works
         # implementation note: find largest number of batches,
@@ -171,8 +116,10 @@ class Prep:
 
     @cached_property
     def token2id(self) -> Dict[str, int]:
-        if self.num_types is None:
-            raise AttributeError('num_types must not be None to build vocabulary')
+        if self._token2id is not None:
+            print('Found user token2id')
+            return self._token2id
+        print('Caching token2id')
         return {t: n for n, t in enumerate(self.types)}
 
     # /////////////////////////////////////////////////////////////////// basic properties

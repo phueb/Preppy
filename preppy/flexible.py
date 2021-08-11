@@ -64,22 +64,36 @@ class Prep:
 
         # find num_tokens_train so that batching works
         # implementation note: find largest number of batches,
-        # that can 1) fit into a part, and 2) leave enough tokens for testing
+        # that can 1) fit into a part, and 2) leave enough tokens for testing.
+        # get test tokens from remaining tokens
         num_tokens_train = self.calc_num_tokens(tokens, self.num_parts, min_num_test_tokens)
-        # use remaining tokens as validation tokens
-        tokens_pruned = tokens[num_tokens_train:]
-        num_tokens_valid = self.calc_num_tokens(tokens_pruned, 1, 0)
+        if num_tokens_train < min_num_test_tokens:
+            raise RuntimeError(f'Number of train tokens ({num_tokens_train:,}) is less '
+                               f'than min_num_test_tokens ({min_num_test_tokens:,})')
+        m = num_tokens_train // 2
+        self.tokens_train = tokens[:m] + tokens[-m:]
+        assert len(self.tokens_train) == num_tokens_train
 
-        # split into train/valid
-        self.tokens_train = tokens[:num_tokens_train]  # TODO remove tokens from middle, not from end
-        self.tokens_valid = tokens_pruned[:num_tokens_valid]
-        print(f'Num tokens in train={len(self.tokens_train):,}')
-        print(f'Num tokens in valid={len(self.tokens_valid):,}')
+        # get tokens for testing from middle of tokens.
+        print('Getting test tokens from middle of corpus')
+        tokens_pruned = tokens[m:-m].copy()
+        assert len(tokens_pruned) == len(tokens) - num_tokens_train
+        num_tokens_test_ = self.calc_num_tokens(tokens_pruned,
+                                                num_parts=1,
+                                                min_num_remaining_tokens=0)
+        self.tokens_test_ = tokens_pruned[:num_tokens_test_]
+        if num_tokens_test_ > len(tokens_pruned):
+            raise RuntimeError(f'Number of test tokens needed ({num_tokens_test_:,}) '
+                               f'is smaller than available tokens ({len(tokens_pruned):,}). '
+                               f'Consider increasing min_num_test_tokens.')
+
+        print(f'Num tokens in train={len(self.tokens_train):>9,}')
+        print(f'Num tokens in test_={len(self.tokens_test_):>9,}')
 
     def calc_num_tokens(self,
                         _tokens,
                         num_parts: int,  # depends on train vs. test
-                        min_num_remaining_tokens,
+                        min_num_remaining_tokens: int,
                         ):
         _num_tokens = 0
         tmp = []
@@ -104,7 +118,7 @@ class Prep:
 
     @cached_property
     def types(self) -> List[str]:
-        return [t for t in SortedSet(self.tokens)]
+        return [t for t in SortedSet(self.tokens_train + self.tokens_test_)]
 
     @cached_property
     def num_types(self):
@@ -117,12 +131,10 @@ class Prep:
     @cached_property
     def token2id(self) -> Dict[str, int]:
         if self._token2id is not None:
-            print('Found user token2id')
             return self._token2id
-        print('Caching token2id')
         return {t: n for n, t in enumerate(self.types)}
 
-    # /////////////////////////////////////////////////////////////////// basic properties
+    # /////////////////////////////////////////////////////////////////// basic properties for training (not testing)
 
     @property
     def num_iterations_list(self) -> List[int]:
@@ -148,7 +160,7 @@ class Prep:
         return self.num_tokens_in_part - self.context_size
 
     @cached_property
-    def num_tokens_in_part(self) -> int:
+    def num_tokens_in_part(self) -> int:  # this is forced to be the same for train and test split
         result = self.num_tokens / self.num_parts
         assert float(result).is_integer()
         return int(result)
@@ -159,7 +171,7 @@ class Prep:
         assert res * 2 == self.num_tokens
         return res
 
-    # /////////////////////////////////////////////////////////////////// mbs
+    # /////////////////////////////////////////////////////////////////// train mbs
 
     @cached_property
     def num_mbs_in_part(self) -> int:
@@ -182,6 +194,7 @@ class Prep:
     def get_reordered_parts(self,
                             tokens: List[str],
                             num_parts: int,
+                            num_tokens_in_part: int,
                             ) -> np.ndarray:
 
         # shuffle sentences in each partition
@@ -197,8 +210,8 @@ class Prep:
 
         # is very memory efficient as it operates on views of original data
         res = as_strided(np.array(token_ids, dtype=np.int64),  # do not change d-type without strides
-                         shape=(num_parts, self.num_tokens_in_part),
-                         strides=(8 * self.num_tokens_in_part, 8),
+                         shape=(num_parts, num_tokens_in_part),
+                         strides=(8 * num_tokens_in_part, 8),
                          writeable=False)
         if self.reverse:
             return np.flip(res, axis=0)
@@ -208,13 +221,14 @@ class Prep:
     def batches_from_strides(self,
                              part: List[int],
                              num_iterations: int,
+                             num_mbs_in_part: int,
                              ) -> np.ndarray:
         """return 3d array where each 2d slice is a batch of windows with shape (batch_size, context_size)."""
         stride = 8  # 8 bytes in 64 bits
 
         if self.sliding:
             num_possible_mbs = self.num_windows_in_part - self.batch_size + 1
-            num_requested_mbs = self.num_mbs_in_part * num_iterations
+            num_requested_mbs = num_mbs_in_part * num_iterations
 
             # get all possible unique mbs in part
             slide_size = 1
@@ -229,7 +243,7 @@ class Prep:
             bool_ids = np.random.permutation([True] * num_requested_mbs + [False] * num_remaining)
             batches = _batches[bool_ids]
         else:
-            num_requested_mbs = self.num_mbs_in_part
+            num_requested_mbs = num_mbs_in_part
             slide_size = self.batch_size
             batches = as_strided(np.array(part, dtype=np.int64),
                                  shape=(num_requested_mbs, self.batch_size, self.num_tokens_in_window),
@@ -254,22 +268,33 @@ class Prep:
             if self.min_num_test_tokens == 0:
                 raise ValueError('Cannot generate batches when is_test=True and min_num_test_tokens=0')
 
+        # we have to calculate sizes for test data because class properties are for train data only
         if is_test:
+            print(f'Generating batches over {len(self.tokens_test_):,} test tokens', flush=True)
+            tokens = self.tokens_test_
             num_parts = 1
+            num_tokens_in_part = len(self.tokens_test_)
+            num_mbs_in_part = int((num_tokens_in_part - self.context_size) / self.batch_size)
         else:
+            tokens = self.tokens  # equivalent to tokens_train
             num_parts = self.num_parts
+            num_tokens_in_part = self.num_tokens_in_part
+            num_mbs_in_part = self.num_mbs_in_part
 
         if iterate_once or is_test:  # useful for computing perplexity on train split
             num_iterations_list = [1] * num_parts
         else:
             num_iterations_list = self.num_iterations_list
 
-        reordered_parts = self.get_reordered_parts(self.tokens, num_parts)
+        reordered_parts = self.get_reordered_parts(tokens, num_parts, num_tokens_in_part)
 
         for part_id, part in enumerate(reordered_parts):
             num_iterations = num_iterations_list[part_id]
 
-            batches = self.batches_from_strides(part, num_iterations)
+            batches = self.batches_from_strides(part, num_iterations, num_mbs_in_part)
+
+            # check that there are no bad integers (from other memory locations) in the batch
+            assert np.max(batches) <= self.num_types
 
             # get batches by sliding incrementally across tokens
             if self.sliding:

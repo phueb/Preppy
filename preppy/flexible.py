@@ -65,19 +65,28 @@ class Prep:
         # find num_tokens_train so that batching works
         # implementation note: find largest number of batches,
         # that can 1) fit into a part, and 2) leave enough tokens for testing.
-        # get test tokens from remaining tokens
         num_tokens_train = self.calc_num_tokens(tokens, self.num_parts, min_num_test_tokens)
+
+        # get train tokens from start and end of corpus, so test tokens are from remaining middle tokens
+        m = num_tokens_train // 2
+        if num_tokens_train & 2 != 0: # when num_tokens_train is not even, we must adjust by ading + 1
+            self.tokens_train = tokens[:m + 1] + tokens[-m:]
+            tokens_pruned = tokens[m+1:-m].copy()
+        else:
+            self.tokens_train = tokens[:m] + tokens[-m:]
+            tokens_pruned = tokens[m:-m].copy()
+
+        # checks
         if num_tokens_train < min_num_test_tokens:
             raise RuntimeError(f'Number of train tokens ({num_tokens_train:,}) is less '
                                f'than min_num_test_tokens ({min_num_test_tokens:,})')
-        m = num_tokens_train // 2
-        self.tokens_train = tokens[:m] + tokens[-m:]
-        assert len(self.tokens_train) == num_tokens_train
+        if len(self.tokens_train) != num_tokens_train:
+            raise RuntimeError(f'Expected {num_tokens_train:,} tokens in training data, '
+                               f'but there are {len(self.tokens_train):,}')
+        if len(tokens_pruned) != len(tokens) - num_tokens_train:
+            raise RuntimeError(f'Expected {len(tokens_pruned):,} pruned tokens, '
+                               f'but there are {len(tokens) - num_tokens_train:,}')
 
-        # get tokens for testing from middle of tokens.
-        print('Getting test tokens from middle of corpus')
-        tokens_pruned = tokens[m:-m].copy()
-        assert len(tokens_pruned) == len(tokens) - num_tokens_train
         num_tokens_test_ = self.calc_num_tokens(tokens_pruned,
                                                 num_parts=1,
                                                 min_num_remaining_tokens=0)

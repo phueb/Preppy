@@ -267,6 +267,7 @@ class Prep:
     def generate_batches(self,
                          is_test: bool = False,
                          iterate_once: bool = False,
+                         shuffle_at_start: bool = False,
                          ) -> Generator[np.ndarray, None, None]:
         """
         yield from 3d array where each 2d slice is a batch of windows with shape (batch_size, context_size).
@@ -305,12 +306,18 @@ class Prep:
             # check that there are no bad integers (from other memory locations) in the batch
             assert np.max(batches) <= self.num_types
 
+            # shuffle batches WITHIN a partition
+            if shuffle_at_start:
+                batches = np.random.permutation(batches)
+
             # get batches by sliding incrementally across tokens
             if self.sliding:
                 yield from batches
             # get batches by iterating over ordered partitions of tokens
             else:
-                yield from chain.from_iterable(repeat(tuple(batches), num_iterations))
+                repeated = repeat(tuple(batches), num_iterations)
+                yield from chain.from_iterable(repeated)
+
 
     # /////////////////////////////////////////////////////////////////// for analysis, not batching
 

@@ -69,7 +69,7 @@ class Prep:
 
         # get train tokens from start and end of corpus, so test tokens are from remaining middle tokens
         m = num_tokens_train // 2
-        if num_tokens_train & 2 != 0: # when num_tokens_train is not even, we must adjust by ading + 1
+        if num_tokens_train % 2 != 0:  # when num_tokens_train is not even, we must adjust by ading + 1
             self.tokens_train = tokens[:m + 1] + tokens[-m:]
             tokens_pruned = tokens[m+1:-m].copy()
         else:
@@ -87,14 +87,19 @@ class Prep:
             raise RuntimeError(f'Expected {len(tokens_pruned):,} pruned tokens, '
                                f'but there are {len(tokens) - num_tokens_train:,}')
 
+        # note:
+        # tokens_pruned is tokens available for test split
+        # num_tokens_test_ is the smallest possible number of tokens that are compatible with batching + context_size,
+        # given the number of tokens in tokens_pruned
+
         num_tokens_test_ = self.calc_num_tokens(tokens_pruned,
                                                 num_parts=1,
                                                 min_num_remaining_tokens=0)
         self.tokens_test_ = tokens_pruned[:num_tokens_test_]
-        if num_tokens_test_ > len(tokens_pruned):
-            raise RuntimeError(f'Number of test tokens needed ({num_tokens_test_:,}) '
-                               f'is smaller than available tokens ({len(tokens_pruned):,}). '
-                               f'Consider increasing min_num_test_tokens.')
+        if len(tokens_pruned) < num_tokens_test_ < min_num_test_tokens:
+            raise RuntimeError(f'Number of tokens needed to make batching + context_size work ({num_tokens_test_:,}) '
+                               f'is larger than tokens available for test split ({len(tokens_pruned):,}). '
+                               f'Consider increasing min_num_test_tokens to make more tokens available.')
 
         print(f'Num tokens in train={len(self.tokens_train):>9,}')
         print(f'Num tokens in test_={len(self.tokens_test_):>9,}')

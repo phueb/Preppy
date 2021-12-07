@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='preppy',
-    version='3.1.0',  # keep version here, otherwise import error during install
+    version='3.1.1',  # keep version here, otherwise import error during install
     packages=['preppy'],
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

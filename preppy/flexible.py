@@ -323,7 +323,6 @@ class Prep:
                 repeated = repeat(tuple(batches), num_iterations)
                 yield from chain.from_iterable(repeated)
 
-
     # /////////////////////////////////////////////////////////////////// for analysis, not batching
 
     @cached_property
@@ -346,4 +345,4 @@ class Prep:
 
     @cached_property
     def reordered_parts(self):
-        return self.get_reordered_parts(self.tokens, self.num_parts)
+        return self.get_reordered_parts(self.tokens, self.num_parts, self.num_tokens_in_part)
